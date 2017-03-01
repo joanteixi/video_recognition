@@ -1,171 +1,210 @@
 $(function() {
-    console.log('joan');
-    if (window.JpegCamera) {
-        var camera; // Initialized at the end
+    var canvas = document.getElementById('drawing');
+    var context = canvas.getContext('2d');
+    var width = window.innerWidth;
+    var height = window.innerHeight;
+    var socket = io.connect()
 
-        var update_stream_stats = function(stats) {
-            $("#stream_stats").html(
-                "Mean luminance = " + stats.mean +
-                "; Standard Deviation = " + stats.std);
 
-            setTimeout(function() {
-                camera.get_stats(update_stream_stats);
-            }, 1000);
-        };
+    socket.on('connect', function() {
+        console.log('Socket ON');
 
-        var take_snapshots = function(count) {
-            var snapshot = camera.capture();
+    })
 
-            if (JpegCamera.canvas_supported()) {
-                snapshot.get_canvas(add_snapshot);
-            } else {
-                // <canvas> is not supported in this browser. We'll use anonymous
-                // graphic instead.
-                var image = document.createElement("img");
-                image.src = "no_canvas_photo.jpg";
+
+    socket.on('message', function(data) {
+        context.rect(data.top, data.left, data.width, data.height);
+        context.stroke();
+
+    });
+
+    //  context.rect(data.top, data.left, data.width, data.height);
+
+
+    var img = document.getElementById("face");
+    context.drawImage(img, 300, 300);
+
+
+
+    /*
+        context.beginPath();
+        context.rect(188, 50, 200, 100);
+        context.fillStyle = 'yellow';
+        context.fill();
+        context.lineWidth = 7;
+        context.strokeStyle = 'black';
+        context.stroke();
+    */
+
+
+    /**
+        if (window.JpegCamera) {
+            var camera; // Initialized at the end
+
+            var update_stream_stats = function(stats) {
+                $("#stream_stats").html(
+                    "Mean luminance = " + stats.mean +
+                    "; Standard Deviation = " + stats.std);
+
                 setTimeout(function() {
-                    add_snapshot.call(snapshot, image)
-                }, 1);
-            }
+                    camera.get_stats(update_stream_stats);
+                }, 1000);
+            };
 
-            if (count > 1) {
-                setTimeout(function() {
-                    take_snapshots(count - 1);
-                }, 500);
-            }
-        };
+            var take_snapshots = function(count) {
+                var snapshot = camera.capture();
 
-        var add_snapshot = function(element) {
-            $(element).data("snapshot", this).addClass("item");
+                if (JpegCamera.canvas_supported()) {
+                    snapshot.get_canvas(add_snapshot);
+                } else {
+                    // <canvas> is not supported in this browser. We'll use anonymous
+                    // graphic instead.
+                    var image = document.createElement("img");
+                    image.src = "no_canvas_photo.jpg";
+                    setTimeout(function() {
+                        add_snapshot.call(snapshot, image)
+                    }, 1);
+                }
 
-            var $container = $("#snapshots").append(element);
-            var $camera = $("#camera");
-            var camera_ratio = $camera.innerWidth() / $camera.innerHeight();
+                if (count > 1) {
+                    setTimeout(function() {
+                        take_snapshots(count - 1);
+                    }, 500);
+                }
+            };
 
-            var height = $container.height()
-            element.style.height = "" + height + "px";
-            element.style.width = "" + Math.round(camera_ratio * height) + "px";
+            var add_snapshot = function(element) {
+                $(element).data("snapshot", this).addClass("item");
 
-            var scroll = $container[0].scrollWidth - $container.innerWidth();
+                var $container = $("#snapshots").append(element);
+                var $camera = $("#camera");
+                var camera_ratio = $camera.innerWidth() / $camera.innerHeight();
 
-            $container.animate({
-                scrollLeft: scroll
-            }, 200);
-        };
+                var height = $container.height()
+                element.style.height = "" + height + "px";
+                element.style.width = "" + Math.round(camera_ratio * height) + "px";
 
-        var select_snapshot = function() {
-            $(".item").removeClass("selected");
-            var snapshot = $(this).addClass("selected").data("snapshot");
-            $("#discard_snapshot, #upload_snapshot, #api_url").show();
-            snapshot.show();
-            $("#show_stream").show();
-        };
+                var scroll = $container[0].scrollWidth - $container.innerWidth();
 
-        var clear_upload_data = function() {
-            $("#upload_status, #upload_result").html("");
-        };
+                $container.animate({
+                    scrollLeft: scroll
+                }, 200);
+            };
 
-        var upload_snapshot = function() {
-            var api_url = '/upload';
+            var select_snapshot = function() {
+                $(".item").removeClass("selected");
+                var snapshot = $(this).addClass("selected").data("snapshot");
+                $("#discard_snapshot, #upload_snapshot, #api_url").show();
+                snapshot.show();
+                $("#show_stream").show();
+            };
 
-            if (!api_url.length) {
-                $("#upload_status").html("Please provide URL for the upload");
-                return;
-            }
+            var clear_upload_data = function() {
+                $("#upload_status, #upload_result").html("");
+            };
 
-            clear_upload_data();
-            $("#loader").show();
-            $("#upload_snapshot").prop("disabled", true);
+            var upload_snapshot = function() {
+                var api_url = '/upload';
 
-            var snapshot = $(".item.selected").data("snapshot");
-            snapshot.upload({
-                api_url: api_url
-            }).done(upload_done).fail(upload_fail);
-        };
+                if (!api_url.length) {
+                    $("#upload_status").html("Please provide URL for the upload");
+                    return;
+                }
 
-        var upload_done = function(response) {
-            $("#upload_snapshot").prop("disabled", false);
-            $("#loader").hide();
-            $("#upload_status").html("Upload successful");
-            $("#upload_result").html(response);
-        };
+                clear_upload_data();
+                $("#loader").show();
+                $("#upload_snapshot").prop("disabled", true);
 
-        var upload_fail = function(code, error, response) {
-            $("#upload_snapshot").prop("disabled", false);
-            $("#loader").hide();
-            $("#upload_status").html(
-                "Upload failed with status " + code + " (" + error + ")");
-            $("#upload_result").html(response);
-        };
+                var snapshot = $(".item.selected").data("snapshot");
+                snapshot.upload({
+                    api_url: api_url
+                }).done(upload_done).fail(upload_fail);
+            };
 
-        var discard_snapshot = function() {
-            var element = $(".item.selected").removeClass("item selected");
+            var upload_done = function(response) {
+                $("#upload_snapshot").prop("disabled", false);
+                $("#loader").hide();
+                $("#upload_status").html("Upload successful");
+                $("#upload_result").html(response);
+            };
 
-            var next = element.nextAll(".item").first();
+            var upload_fail = function(code, error, response) {
+                $("#upload_snapshot").prop("disabled", false);
+                $("#loader").hide();
+                $("#upload_status").html(
+                    "Upload failed with status " + code + " (" + error + ")");
+                $("#upload_result").html(response);
+            };
 
-            if (!next.size()) {
-                next = element.prevAll(".item").first();
-            }
+            var discard_snapshot = function() {
+                var element = $(".item.selected").removeClass("item selected");
 
-            if (next.size()) {
-                next.addClass("selected");
-                next.data("snapshot").show();
-            } else {
+                var next = element.nextAll(".item").first();
+
+                if (!next.size()) {
+                    next = element.prevAll(".item").first();
+                }
+
+                if (next.size()) {
+                    next.addClass("selected");
+                    next.data("snapshot").show();
+                } else {
+                    hide_snapshot_controls();
+                }
+
+                element.data("snapshot").discard();
+
+                element.hide("slow", function() {
+                    $(this).remove()
+                });
+            };
+
+            var show_stream = function() {
+                $(this).hide();
+                $(".item").removeClass("selected");
                 hide_snapshot_controls();
+                clear_upload_data();
+                camera.show_stream();
+            };
+
+            var hide_snapshot_controls = function() {
+                $("#discard_snapshot, #upload_snapshot, #api_url").hide();
+                $("#upload_result, #upload_status").html("");
+                $("#show_stream").hide();
+            };
+
+            $("#take_snapshots").click(function() {
+                take_snapshots(3);
+            });
+            $("#snapshots").on("click", ".item", select_snapshot);
+            $("#upload_snapshot").click(upload_snapshot);
+            $("#discard_snapshot").click(discard_snapshot);
+            $("#show_stream").click(show_stream);
+
+            var options = {
+                shutter_ogg_url: "../dist/shutter.ogg",
+                shutter_mp3_url: "../dist/shutter.mp3",
+                swf_url: "../dist/jpeg_camera.swf"
             }
 
-            element.data("snapshot").discard();
+            var camera = new JpegCamera("#camera", options).ready(function(info) {
+                $("#take_snapshots").show();
+                var snapshot = camera.capture();
+                snapshot.upload({
+                        api_url: '/upload'
+                    })
+                    .done(function(response) {
+                        this.discard();
 
-            element.hide("slow", function() {
-                $(this).remove()
+                    }).fail(function(status_code, error_message, response) {
+                        alert("failed. message: " + error_message)
+                    })
+
+                $("#camera_info").html(
+                    "Camera resolution: " + info.video_width + "x" + info.video_height);
+
+                this.get_stats(update_stream_stats);
             });
-        };
-
-        var show_stream = function() {
-            $(this).hide();
-            $(".item").removeClass("selected");
-            hide_snapshot_controls();
-            clear_upload_data();
-            camera.show_stream();
-        };
-
-        var hide_snapshot_controls = function() {
-            $("#discard_snapshot, #upload_snapshot, #api_url").hide();
-            $("#upload_result, #upload_status").html("");
-            $("#show_stream").hide();
-        };
-
-        $("#take_snapshots").click(function() {
-            take_snapshots(3);
-        });
-        $("#snapshots").on("click", ".item", select_snapshot);
-        $("#upload_snapshot").click(upload_snapshot);
-        $("#discard_snapshot").click(discard_snapshot);
-        $("#show_stream").click(show_stream);
-
-        var options = {
-            shutter_ogg_url: "../dist/shutter.ogg",
-            shutter_mp3_url: "../dist/shutter.mp3",
-            swf_url: "../dist/jpeg_camera.swf"
         }
-
-        var camera = new JpegCamera("#camera", options).ready(function(info) {
-            $("#take_snapshots").show();
-            var snapshot = camera.capture();
-            snapshot.upload({
-                    api_url: '/upload'
-                })
-                .done(function(response) {
-                    this.discard();
-
-                }).fail(function(status_code, error_message, response) {
-                    alert("failed. message: " + error_message)
-                })
-
-            $("#camera_info").html(
-                "Camera resolution: " + info.video_width + "x" + info.video_height);
-
-            this.get_stats(update_stream_stats);
-        });
-    }
+        **/
 });

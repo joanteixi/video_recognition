@@ -1,8 +1,22 @@
+* {
+   margin: 0;
+   padding: 0;
+}
+body, html{
+   width: 100%;
+   height: 100%;
+}
+
+
 body {
   background-color: #ddd;
   padding: 0.5em;
   text-align: center;
   font-family: "Helvetica Neueu", "Helvetica", "Arial", sans;
+}
+
+#drawing {
+   display: block;
 }
 
 button, input, #loader {
